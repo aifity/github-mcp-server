@@ -24,7 +24,7 @@ import (
 // ToolsetMetadataLocalGit defines the local git toolset metadata
 var ToolsetMetadataLocalGit = inventory.ToolsetMetadata{
 	ID:          "local_git",
-	Description: "Local Git repository operations (adapted from git-mcp-go)",
+	Description: "Local Git repository operations - work with git repositories on your local machine (status, diff, commit, push, pull, branches, etc.)",
 	Icon:        "git-branch",
 }
 
@@ -544,7 +544,7 @@ func GitCreateBranch(t translations.TranslationHelperFunc) inventory.ServerTool 
 	return inventory.NewServerToolFromHandler(
 		mcp.Tool{
 			Name:        "git_create_branch",
-			Description: t("TOOL_GIT_CREATE_BRANCH_DESCRIPTION", "Creates a new branch from an optional base branch"),
+			Description: t("TOOL_GIT_CREATE_BRANCH_DESCRIPTION", "Creates a new branch from an optional base branch and automatically checks it out"),
 			Annotations: &mcp.ToolAnnotations{
 				Title:        t("TOOL_GIT_CREATE_BRANCH_USER_TITLE", "Git create branch"),
 				ReadOnlyHint: false,
@@ -791,7 +791,7 @@ func GitPush(t translations.TranslationHelperFunc) inventory.ServerTool {
 	return inventory.NewServerToolFromHandler(
 		mcp.Tool{
 			Name:        "git_push",
-			Description: t("TOOL_GIT_PUSH_DESCRIPTION", "Pushes local commits to a remote repository"),
+			Description: t("TOOL_GIT_PUSH_DESCRIPTION", "Pushes local commits to a remote repository and automatically sets up tracking"),
 			Annotations: &mcp.ToolAnnotations{
 				Title:        t("TOOL_GIT_PUSH_USER_TITLE", "Git push"),
 				ReadOnlyHint: false,
@@ -851,6 +851,79 @@ func GitPush(t translations.TranslationHelperFunc) inventory.ServerTool {
 				result, err := gitDeps.GetGitOps().PushChanges(repoPath, remote, branch)
 				if err != nil {
 					return utils.NewToolResultError(fmt.Sprintf("Failed to push changes: %v", err)), nil
+				}
+
+				return utils.NewToolResultText(result), nil
+			}
+		},
+	)
+}
+
+// GitPull creates a tool to pull changes from remote
+func GitPull(t translations.TranslationHelperFunc) inventory.ServerTool {
+	return inventory.NewServerToolFromHandler(
+		mcp.Tool{
+			Name:        "git_pull",
+			Description: t("TOOL_GIT_PULL_DESCRIPTION", "Pulls changes from a remote repository with automatic rebase and prune"),
+			Annotations: &mcp.ToolAnnotations{
+				Title:        t("TOOL_GIT_PULL_USER_TITLE", "Git pull"),
+				ReadOnlyHint: false,
+			},
+			InputSchema: &jsonschema.Schema{
+				Type: "object",
+				Properties: map[string]*jsonschema.Schema{
+					"repo_path": {
+						Type:        "string",
+						Description: "Path to Git repository (optional if default repository is configured)",
+					},
+					"remote": {
+						Type:        "string",
+						Description: "Remote name (default: origin)",
+					},
+					"branch": {
+						Type:        "string",
+						Description: "Branch name to pull (default: current branch's upstream)",
+					},
+				},
+			},
+		},
+		ToolsetMetadataLocalGit,
+		func(deps any) mcp.ToolHandler {
+			gitDeps := deps.(GitToolDependencies)
+			return func(ctx context.Context, request *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+				// Unmarshal arguments
+				var args map[string]any
+				if err := json.Unmarshal(request.Params.Arguments, &args); err != nil {
+					return utils.NewToolResultError(fmt.Sprintf("Failed to parse arguments: %v", err)), nil
+				}
+
+				requestedPath := ""
+				if val, ok := args["repo_path"].(string); ok {
+					requestedPath = val
+				}
+
+				repoPath, err := validateRepoPath(requestedPath, gitDeps.GetRepoPaths())
+				if err != nil {
+					return utils.NewToolResultError(fmt.Sprintf("Repository path error: %v", err)), nil
+				}
+
+				remote := ""
+				if remoteInterface, ok := args["remote"]; ok {
+					if remoteStr, ok := remoteInterface.(string); ok {
+						remote = remoteStr
+					}
+				}
+
+				branch := ""
+				if branchInterface, ok := args["branch"]; ok {
+					if branchStr, ok := branchInterface.(string); ok {
+						branch = branchStr
+					}
+				}
+
+				result, err := gitDeps.GetGitOps().PullChanges(repoPath, remote, branch)
+				if err != nil {
+					return utils.NewToolResultError(fmt.Sprintf("Failed to pull changes: %v", err)), nil
 				}
 
 				return utils.NewToolResultText(result), nil
@@ -1054,6 +1127,7 @@ func AllGitTools(t translations.TranslationHelperFunc) []inventory.ServerTool {
 		GitShow(t),
 		GitInit(t),
 		GitPush(t),
+		GitPull(t),
 		GitListRepositories(t),
 		GitApplyPatchString(t),
 		GitApplyPatchFile(t),

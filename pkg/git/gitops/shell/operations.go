@@ -91,30 +91,26 @@ func (s *ShellGitOperations) GetLog(repoPath string, maxCount int) ([]string, er
 	return logs, nil
 }
 
-// CreateBranch creates a new branch
+// CreateBranch creates a new branch and automatically checks it out
 func (s *ShellGitOperations) CreateBranch(repoPath string, branchName string, baseBranch string) (string, error) {
-	args := []string{"branch", branchName}
+	// Use checkout -b to create and switch to the new branch in one command
+	args := []string{"checkout", "-b", branchName}
 	if baseBranch != "" {
 		args = append(args, baseBranch)
 	}
 
 	_, err := gitops.RunGitCommand(repoPath, args...)
 	if err != nil {
-		return "", fmt.Errorf("failed to create branch: %w", err)
+		return "", fmt.Errorf("failed to create and checkout branch: %w", err)
 	}
 
 	baseRef := baseBranch
 	if baseRef == "" {
-		// Get the current branch name
-		currentBranch, err := gitops.RunGitCommand(repoPath, "rev-parse", "--abbrev-ref", "HEAD")
-		if err != nil {
-			baseRef = "HEAD"
-		} else {
-			baseRef = strings.TrimSpace(currentBranch)
-		}
+		// If no base branch was specified, it was created from the current HEAD
+		baseRef = "HEAD"
 	}
 
-	return fmt.Sprintf("Created branch '%s' from '%s'", branchName, baseRef), nil
+	return fmt.Sprintf("Created and switched to branch '%s' from '%s'", branchName, baseRef), nil
 }
 
 // CheckoutBranch switches to a branch
@@ -149,15 +145,24 @@ func (s *ShellGitOperations) ShowCommit(repoPath string, revision string) (strin
 	return gitops.RunGitCommand(repoPath, "show", revision)
 }
 
-// PushChanges pushes local commits to a remote repository
+// PushChanges pushes local commits to a remote repository with automatic upstream tracking
 func (s *ShellGitOperations) PushChanges(repoPath string, remote string, branch string) (string, error) {
-	args := []string{"push"}
-	if remote != "" {
-		args = append(args, remote)
+	// Default to "origin" if no remote is specified
+	if remote == "" {
+		remote = "origin"
 	}
-	if branch != "" {
-		args = append(args, branch)
+
+	// If no branch is specified, get the current branch
+	if branch == "" {
+		currentBranch, err := gitops.RunGitCommand(repoPath, "rev-parse", "--abbrev-ref", "HEAD")
+		if err != nil {
+			return "", fmt.Errorf("failed to get current branch: %w", err)
+		}
+		branch = strings.TrimSpace(currentBranch)
 	}
+
+	// Use --set-upstream to automatically track the remote branch
+	args := []string{"push", "--set-upstream", remote, branch}
 
 	output, err := gitops.RunGitCommand(repoPath, args...)
 	if err != nil {
@@ -174,6 +179,35 @@ func (s *ShellGitOperations) PushChanges(repoPath string, remote string, branch 
 		remote,
 		branch,
 		output), nil
+}
+
+// PullChanges pulls changes from a remote repository with automatic rebase and prune
+func (s *ShellGitOperations) PullChanges(repoPath string, remote string, branch string) (string, error) {
+	// Default to "origin" if no remote is specified
+	if remote == "" {
+		remote = "origin"
+	}
+
+	// Build the pull command with --prune and --rebase flags
+	args := []string{"pull", "--prune", "--rebase", remote}
+
+	// Add branch if specified
+	if branch != "" {
+		args = append(args, branch)
+	}
+
+	output, err := gitops.RunGitCommand(repoPath, args...)
+	if err != nil {
+		return "", fmt.Errorf("failed to pull changes: %w", err)
+	}
+
+	// Check if the output indicates that everything is up-to-date
+	if strings.Contains(output, "up-to-date") || strings.Contains(output, "Already up to date") {
+		return output, nil
+	}
+
+	// Format the output to match the expected format
+	return fmt.Sprintf("Successfully pulled from %s\n%s", remote, output), nil
 }
 
 // ApplyPatchFromFile applies a patch from a file to the repository
