@@ -499,7 +499,7 @@ func Test_IssueCommentWrite(t *testing.T) {
 	tests := []struct {
 		name            string
 		mockedClient    *http.Client
-		requestArgs     map[string]interface{}
+		requestArgs     map[string]any
 		expectError     bool
 		expectedComment *github.IssueComment
 		expectedErrMsg  string
@@ -509,7 +509,7 @@ func Test_IssueCommentWrite(t *testing.T) {
 			mockedClient: MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
 				PatchReposIssuesCommentsByOwnerByRepoByCommentID: mockResponse(t, http.StatusOK, mockComment),
 			}),
-			requestArgs: map[string]interface{}{
+			requestArgs: map[string]any{
 				"method":     "update",
 				"owner":      "owner",
 				"repo":       "repo",
@@ -526,7 +526,7 @@ func Test_IssueCommentWrite(t *testing.T) {
 					w.WriteHeader(http.StatusNoContent)
 				}),
 			}),
-			requestArgs: map[string]interface{}{
+			requestArgs: map[string]any{
 				"method":     "delete",
 				"owner":      "owner",
 				"repo":       "repo",
@@ -536,7 +536,7 @@ func Test_IssueCommentWrite(t *testing.T) {
 		},
 		{
 			name: "update fails - missing body",
-			requestArgs: map[string]interface{}{
+			requestArgs: map[string]any{
 				"method":     "update",
 				"owner":      "owner",
 				"repo":       "repo",
@@ -547,7 +547,7 @@ func Test_IssueCommentWrite(t *testing.T) {
 		},
 		{
 			name: "invalid method",
-			requestArgs: map[string]interface{}{
+			requestArgs: map[string]any{
 				"method":     "invalid",
 				"owner":      "owner",
 				"repo":       "repo",
@@ -564,7 +564,7 @@ func Test_IssueCommentWrite(t *testing.T) {
 					_, _ = w.Write([]byte(`{"message": "Not Found"}`))
 				}),
 			}),
-			requestArgs: map[string]interface{}{
+			requestArgs: map[string]any{
 				"method":     "update",
 				"owner":      "owner",
 				"repo":       "repo",
@@ -1134,7 +1134,7 @@ func Test_CreateIssue_BodyFiltering(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup mock client that verifies the filtered body is sent
 			mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
-				PostReposIssuesByOwnerByRepo: expectRequestBody(t, map[string]interface{}{
+				PostReposIssuesByOwnerByRepo: expectRequestBody(t, map[string]any{
 					"title":     "Test Issue",
 					"body":      tc.expectedBody,
 					"labels":    []any{},
@@ -1151,7 +1151,7 @@ func Test_CreateIssue_BodyFiltering(t *testing.T) {
 			handler := serverTool.Handler(deps)
 
 			// Create call request with unfiltered body
-			request := createMCPRequest(map[string]interface{}{
+			request := createMCPRequest(map[string]any{
 				"method": "create",
 				"owner":  "owner",
 				"repo":   "repo",
@@ -1199,7 +1199,7 @@ func Test_UpdateIssue_BodyFiltering(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup mock client that verifies the filtered body is sent
 			mockedClient := MockHTTPClientWithHandlers(map[string]http.HandlerFunc{
-				PatchReposIssuesByOwnerByRepoByIssueNumber: expectRequestBody(t, map[string]interface{}{
+				PatchReposIssuesByOwnerByRepoByIssueNumber: expectRequestBody(t, map[string]any{
 					"body": tc.expectedBody,
 				}).andThen(
 					mockResponse(t, http.StatusOK, &github.Issue{
@@ -1219,7 +1219,7 @@ func Test_UpdateIssue_BodyFiltering(t *testing.T) {
 			handler := serverTool.Handler(deps)
 
 			// Create call request with unfiltered body
-			request := createMCPRequest(map[string]interface{}{
+			request := createMCPRequest(map[string]any{
 				"method":       "update",
 				"owner":        "owner",
 				"repo":         "repo",

@@ -15,36 +15,36 @@ import (
 	"github.com/github/github-mcp-server/pkg/git/gitops"
 )
 
-// ShellGitOperations implements GitOperations using git CLI commands
-type ShellGitOperations struct{}
+// GitOperations implements GitOperations using git CLI commands
+type GitOperations struct{}
 
-// NewShellGitOperations creates a new ShellGitOperations instance
-func NewShellGitOperations() *ShellGitOperations {
-	return &ShellGitOperations{}
+// NewGitOperations creates a new GitOperations instance
+func NewGitOperations() *GitOperations {
+	return &GitOperations{}
 }
 
 // GetStatus returns the status of the working tree
-func (s *ShellGitOperations) GetStatus(repoPath string) (string, error) {
+func (s *GitOperations) GetStatus(repoPath string) (string, error) {
 	return gitops.RunGitCommand(repoPath, "status")
 }
 
 // GetDiffUnstaged returns the diff of unstaged changes
-func (s *ShellGitOperations) GetDiffUnstaged(repoPath string) (string, error) {
+func (s *GitOperations) GetDiffUnstaged(repoPath string) (string, error) {
 	return gitops.RunGitCommand(repoPath, "diff")
 }
 
 // GetDiffStaged returns the diff of staged changes
-func (s *ShellGitOperations) GetDiffStaged(repoPath string) (string, error) {
+func (s *GitOperations) GetDiffStaged(repoPath string) (string, error) {
 	return gitops.RunGitCommand(repoPath, "diff", "--cached")
 }
 
 // GetDiff returns the diff between the current state and a target
-func (s *ShellGitOperations) GetDiff(repoPath string, target string) (string, error) {
+func (s *GitOperations) GetDiff(repoPath string, target string) (string, error) {
 	return gitops.RunGitCommand(repoPath, "diff", target)
 }
 
 // CommitChanges commits the staged changes
-func (s *ShellGitOperations) CommitChanges(repoPath string, message string) (string, error) {
+func (s *GitOperations) CommitChanges(repoPath string, message string) (string, error) {
 	// Filter out unwanted patterns from the commit message
 	filteredMessage := bodyfilter.FilterBody(message)
 
@@ -56,7 +56,7 @@ func (s *ShellGitOperations) CommitChanges(repoPath string, message string) (str
 }
 
 // AddFiles adds files to the staging area
-func (s *ShellGitOperations) AddFiles(repoPath string, files []string) (string, error) {
+func (s *GitOperations) AddFiles(repoPath string, files []string) (string, error) {
 	args := append([]string{"add"}, files...)
 	_, err := gitops.RunGitCommand(repoPath, args...)
 	if err != nil {
@@ -66,7 +66,7 @@ func (s *ShellGitOperations) AddFiles(repoPath string, files []string) (string, 
 }
 
 // ResetStaged unstages all staged changes
-func (s *ShellGitOperations) ResetStaged(repoPath string) (string, error) {
+func (s *GitOperations) ResetStaged(repoPath string) (string, error) {
 	_, err := gitops.RunGitCommand(repoPath, "reset")
 	if err != nil {
 		return "", fmt.Errorf("failed to reset staged changes: %w", err)
@@ -75,7 +75,7 @@ func (s *ShellGitOperations) ResetStaged(repoPath string) (string, error) {
 }
 
 // GetLog returns the commit history
-func (s *ShellGitOperations) GetLog(repoPath string, maxCount int) ([]string, error) {
+func (s *GitOperations) GetLog(repoPath string, maxCount int) ([]string, error) {
 	args := []string{"log", "--pretty=format:Commit: %H%nAuthor: %an <%ae>%nDate: %ad%nMessage: %s%n"}
 	if maxCount > 0 {
 		args = append(args, fmt.Sprintf("-n%d", maxCount))
@@ -92,7 +92,7 @@ func (s *ShellGitOperations) GetLog(repoPath string, maxCount int) ([]string, er
 }
 
 // CreateBranch creates a new branch and automatically checks it out
-func (s *ShellGitOperations) CreateBranch(repoPath string, branchName string, baseBranch string) (string, error) {
+func (s *GitOperations) CreateBranch(repoPath string, branchName string, baseBranch string) (string, error) {
 	// Use checkout -b to create and switch to the new branch in one command
 	args := []string{"checkout", "-b", branchName}
 	if baseBranch != "" {
@@ -114,7 +114,7 @@ func (s *ShellGitOperations) CreateBranch(repoPath string, branchName string, ba
 }
 
 // CheckoutBranch switches to a branch
-func (s *ShellGitOperations) CheckoutBranch(repoPath string, branchName string) (string, error) {
+func (s *GitOperations) CheckoutBranch(repoPath string, branchName string) (string, error) {
 	_, err := gitops.RunGitCommand(repoPath, "checkout", branchName)
 	if err != nil {
 		return "", fmt.Errorf("failed to checkout branch: %w", err)
@@ -124,7 +124,7 @@ func (s *ShellGitOperations) CheckoutBranch(repoPath string, branchName string) 
 }
 
 // InitRepo initializes a new Git repository
-func (s *ShellGitOperations) InitRepo(repoPath string) (string, error) {
+func (s *GitOperations) InitRepo(repoPath string) (string, error) {
 	// Create directory if it doesn't exist
 	err := os.MkdirAll(repoPath, 0755)
 	if err != nil {
@@ -141,12 +141,12 @@ func (s *ShellGitOperations) InitRepo(repoPath string) (string, error) {
 }
 
 // ShowCommit shows the contents of a commit
-func (s *ShellGitOperations) ShowCommit(repoPath string, revision string) (string, error) {
+func (s *GitOperations) ShowCommit(repoPath string, revision string) (string, error) {
 	return gitops.RunGitCommand(repoPath, "show", revision)
 }
 
 // PushChanges pushes local commits to a remote repository with automatic upstream tracking
-func (s *ShellGitOperations) PushChanges(repoPath string, remote string, branch string) (string, error) {
+func (s *GitOperations) PushChanges(repoPath string, remote string, branch string) (string, error) {
 	// Default to "origin" if no remote is specified
 	if remote == "" {
 		remote = "origin"
@@ -182,7 +182,7 @@ func (s *ShellGitOperations) PushChanges(repoPath string, remote string, branch 
 }
 
 // PullChanges pulls changes from a remote repository with automatic rebase and prune
-func (s *ShellGitOperations) PullChanges(repoPath string, remote string, branch string) (string, error) {
+func (s *GitOperations) PullChanges(repoPath string, remote string, branch string) (string, error) {
 	// Default to "origin" if no remote is specified
 	if remote == "" {
 		remote = "origin"
@@ -211,7 +211,7 @@ func (s *ShellGitOperations) PullChanges(repoPath string, remote string, branch 
 }
 
 // ApplyPatchFromFile applies a patch from a file to the repository
-func (s *ShellGitOperations) ApplyPatchFromFile(repoPath string, patchFilePath string) (string, error) {
+func (s *GitOperations) ApplyPatchFromFile(repoPath string, patchFilePath string) (string, error) {
 	// Ensure the patch file exists
 	if _, err := os.Stat(patchFilePath); os.IsNotExist(err) {
 		return "", fmt.Errorf("patch file does not exist: %s", patchFilePath)
@@ -227,7 +227,7 @@ func (s *ShellGitOperations) ApplyPatchFromFile(repoPath string, patchFilePath s
 }
 
 // ApplyPatchFromString applies a patch from a string to the repository
-func (s *ShellGitOperations) ApplyPatchFromString(repoPath string, patchString string) (string, error) {
+func (s *GitOperations) ApplyPatchFromString(repoPath string, patchString string) (string, error) {
 	// Create a temporary file to store the patch
 	tmpFile, err := os.CreateTemp("", "git-mcp-patch-*.patch")
 	if err != nil {
